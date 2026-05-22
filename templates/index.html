@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>SakhiSafe Dashboard</title>
+
+<style>
+
+body{
+    background:#111;
+    color:white;
+    font-family:Arial;
+    padding:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+}
+
+.card{
+    background:#222;
+    padding:20px;
+    border-radius:10px;
+}
+
+.online{
+    color:lime;
+}
+
+.offline{
+    color:red;
+}
+
+.alert{
+    color:orange;
+    font-weight:bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Women Safety Monitoring Dashboard</h1>
+
+<div class="grid">
+
+{% for cam_id, data in cameras.items() %}
+
+<div class="card">
+
+<h2>Camera {{ cam_id }}</h2>
+
+<p>
+Status:
+<span class="{{ data.status.lower() }}">
+{{ data.status }}
+</span>
+</p>
+
+<p>
+Persons Detected:
+{{ data.persons }}
+</p>
+
+{% if data.alert %}
+
+<p class="alert">
+⚠ ALERT: Person Detected!
+</p>
+
+{% else %}
+
+<p>SAFE</p>
+
+{% endif %}
+
+</div>
+
+{% endfor %}
+
+</div>
+
+</body>
+</html>
