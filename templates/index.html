@@ -3,87 +3,133 @@
 
 <head>
 
-<title>SakhiSafe Dashboard</title>
+    <title>SakhiSafe Dashboard</title>
 
-<style>
-
-body{
-    background:#111;
-    color:white;
-    font-family:Arial;
-    padding:20px;
-}
-
-.grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:20px;
-}
-
-.card{
-    background:#222;
-    padding:20px;
-    border-radius:10px;
-}
-
-.online{
-    color:lime;
-}
-
-.offline{
-    color:red;
-}
-
-.alert{
-    color:orange;
-    font-weight:bold;
-}
-
-</style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
 </head>
 
 <body>
 
-<h1>Women Safety Monitoring Dashboard</h1>
+    <!-- HEADER -->
 
-<div class="grid">
+    <div class="header">
 
-{% for cam_id, data in cameras.items() %}
+        <h1>🛡 SakhiSafe Women Safety Dashboard</h1>
 
-<div class="card">
+        <p>
+            AI Powered Multi Camera Surveillance System
+        </p>
 
-<h2>Camera {{ cam_id }}</h2>
+    </div>
 
-<p>
-Status:
-<span class="{{ data.status.lower() }}">
-{{ data.status }}
-</span>
-</p>
+    <!-- TOP CARDS -->
 
-<p>
-Persons Detected:
-{{ data.persons }}
-</p>
+    <div class="top-cards">
 
-{% if data.alert %}
+        <div class="card">
 
-<p class="alert">
-⚠ ALERT: Person Detected!
-</p>
+            <h3>Total Cameras</h3>
 
-{% else %}
+            <p>{{ cameras|length }}</p>
 
-<p>SAFE</p>
+        </div>
 
-{% endif %}
+        <div class="card">
 
-</div>
+            <h3>System Status</h3>
 
-{% endfor %}
+            <p>ACTIVE</p>
 
-</div>
+        </div>
+
+        <div class="card">
+
+            <h3>Live Alerts</h3>
+
+            <p>
+                {{
+                alerts.values()
+                | select("equalto", "PERSON DETECTED")
+                | list
+                | length
+                }}
+            </p>
+
+        </div>
+
+    </div>
+
+    <!-- CAMERA DASHBOARD -->
+
+    <div class="dashboard">
+
+        {% for camera in cameras %}
+
+        <div class="camera-card">
+
+            <!-- CAMERA HEADER -->
+
+            <div class="camera-header">
+
+                <h2>
+                    📷 Camera {{ loop.index }}
+                </h2>
+
+                <div class="status">
+
+                    {% if alerts.get(loop.index0) == "PERSON DETECTED" %}
+
+                    ALERT
+
+                    {% else %}
+
+                    LIVE
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            <!-- LIVE VIDEO -->
+
+            <img class="camera-feed" src="{{ camera }}">
+
+            <!-- ALERT SECTION -->
+
+            <div class="
+                alert-box
+
+                {% if alerts.get(loop.index0) == 'PERSON DETECTED' %}
+
+                    alert-danger
+
+                {% else %}
+
+                    alert-safe
+
+                {% endif %}
+            ">
+
+                {% if alerts.get(loop.index0) == "PERSON DETECTED" %}
+
+                🚨 PERSON DETECTED
+
+                {% else %}
+
+                ✅ SAFE MONITORING
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
 
 </body>
+
 </html>
