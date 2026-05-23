@@ -2,6 +2,9 @@ from flask import Flask, render_template, Response
 import cv2
 import threading
 import time
+import requests
+
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 
@@ -16,23 +19,21 @@ hog.setSVMDetector(
 )
 
 # -----------------------------------
-# YOUR CAMERA URLS
+# CAMERA RANGE CONFIGURATION
 # -----------------------------------
 
-camera_urls = [
+BASE_IP = "50.0.1."
 
-    "http://172.29.0.199:8080/video",
-    "http://172.29.0.59:8080/video",
-    "http://172.29.0.173:8080/video",
-    "http://172.29.0.207:8080/video"
+START_IP = 160
+END_IP = 255
 
-]
-
-print(f"Total Cameras Configured: {len(camera_urls)}")
+print(f"Scanning Range: {BASE_IP}{START_IP}-{END_IP}")
 
 # -----------------------------------
 # GLOBAL STORAGE
 # -----------------------------------
+
+camera_urls = []
 
 caps = []
 
@@ -40,13 +41,59 @@ latest_frames = {}
 
 camera_alerts = {}
 
+camera_fps = {}
+
+camera_status = {}
+
 # -----------------------------------
-# OPEN CAMERAS
+# CAMERA DETECTION
+# -----------------------------------
+
+def detect_camera(ip):
+
+    try:
+
+        response = requests.get(
+            f"http://{ip}:8080",
+            timeout=0.3
+        )
+
+        if response.status_code == 200:
+
+            url = f"http://{ip}:8080/video"
+
+            camera_urls.append(url)
+
+            print(f"Camera Found: {url}")
+
+    except Exception:
+
+        pass
+
+# -----------------------------------
+# PARALLEL NETWORK SCAN
+# -----------------------------------
+
+with ThreadPoolExecutor(max_workers=100) as executor:
+
+    for i in range(START_IP, END_IP + 1):
+
+        ip = f"{BASE_IP}{i}"
+
+        executor.submit(
+            detect_camera,
+            ip
+        )
+
+print(f"Total Cameras Found: {len(camera_urls)}")
+
+# -----------------------------------
+# OPEN ACTIVE CAMERAS ONLY
 # -----------------------------------
 
 for url in camera_urls:
 
-    print(f"Connecting to: {url}")
+    print(f"Connecting: {url}")
 
     cap = cv2.VideoCapture(url)
 
@@ -70,6 +117,12 @@ def camera_reader(camera_id, cap):
 
     global latest_frames
     global camera_alerts
+    global camera_fps
+    global camera_status
+
+    frame_count = 0
+
+    start_time = time.time()
 
     while True:
 
@@ -77,53 +130,75 @@ def camera_reader(camera_id, cap):
 
         if not success:
 
-            print(f"Camera {camera_id + 1} disconnected")
+            print(f"Camera {camera_id + 1} Offline")
 
             camera_alerts[camera_id] = "CAMERA OFFLINE"
+
+            camera_status[camera_id] = "OFFLINE"
 
             time.sleep(1)
 
             continue
 
-        # Resize frame
-
-        frame = cv2.resize(frame, (640, 480))
+        camera_status[camera_id] = "ONLINE"
 
         # -----------------------------------
-        # HUMAN DETECTION
+        # PERFORMANCE RESIZE
         # -----------------------------------
 
-        boxes, weights = hog.detectMultiScale(
-            frame,
-            winStride=(8, 8)
-        )
+        frame = cv2.resize(frame, (320, 240))
+
+        frame_count += 1
 
         alert = "SAFE"
 
-        for (x, y, w, h) in boxes:
+        # -----------------------------------
+        # RUN AI EVERY 10 FRAMES
+        # -----------------------------------
 
-            cv2.rectangle(
+        if frame_count % 10 == 0:
+
+            boxes, weights = hog.detectMultiScale(
                 frame,
-                (x, y),
-                (x + w, y + h),
-                (0, 0, 255),
-                3
+                winStride=(8, 8)
             )
 
-            cv2.putText(
-                frame,
-                "PERSON DETECTED",
-                (x, y - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (0, 0, 255),
-                2
-            )
+            for (x, y, w, h) in boxes:
 
-            alert = "PERSON DETECTED"
+                cv2.rectangle(
+                    frame,
+                    (x, y),
+                    (x + w, y + h),
+                    (0, 0, 255),
+                    2
+                )
+
+                cv2.putText(
+                    frame,
+                    "PERSON DETECTED",
+                    (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 0, 255),
+                    2
+                )
+
+                alert = "PERSON DETECTED"
 
         # -----------------------------------
-        # STATUS TEXT
+        # FPS CALCULATION
+        # -----------------------------------
+
+        elapsed = time.time() - start_time
+
+        if elapsed > 0:
+
+            fps = frame_count / elapsed
+
+            camera_fps[camera_id] = int(fps)
+
+        # -----------------------------------
+        # STATUS OVERLAY
         # -----------------------------------
 
         color = (0, 255, 0)
@@ -135,18 +210,38 @@ def camera_reader(camera_id, cap):
         cv2.putText(
             frame,
             f"STATUS: {alert}",
-            (20, 40),
+            (10, 25),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1,
+            0.6,
             color,
-            3
+            2
         )
 
-        # SAVE ALERT
+        cv2.putText(
+            frame,
+            f"FPS: {camera_fps.get(camera_id, 0)}",
+            (10, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 255, 0),
+            2
+        )
+
+        cv2.putText(
+            frame,
+            f"CAMERA {camera_id + 1}",
+            (10, 75),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 255, 255),
+            2
+        )
+
+        # -----------------------------------
+        # SAVE DATA
+        # -----------------------------------
 
         camera_alerts[camera_id] = alert
-
-        # SAVE FRAME
 
         latest_frames[camera_id] = frame
 
@@ -180,7 +275,10 @@ def generate_frames(camera_id):
 
         frame = latest_frames[camera_id]
 
-        ret, buffer = cv2.imencode('.jpg', frame)
+        ret, buffer = cv2.imencode(
+            '.jpg',
+            frame
+        )
 
         frame = buffer.tobytes()
 
@@ -206,10 +304,17 @@ def index():
 
         cameras.append(f"/video/{i}")
 
+    total_alerts = sum(
+        1 for alert in camera_alerts.values()
+        if alert != "SAFE"
+    )
+
     return render_template(
         "index.html",
         cameras=cameras,
-        alerts=camera_alerts
+        alerts=camera_alerts,
+        total_alerts=total_alerts,
+        statuses=camera_status
     )
 
 # -----------------------------------
