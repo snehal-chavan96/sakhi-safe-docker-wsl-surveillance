@@ -3,10 +3,19 @@ import cv2
 import threading
 import time
 import requests
+import os
 
 from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
+
+# -----------------------------------
+# CREATE ALERTS FOLDER
+# -----------------------------------
+
+if not os.path.exists("alerts"):
+
+    os.makedirs("alerts")
 
 # -----------------------------------
 # AI HUMAN DETECTOR
@@ -45,69 +54,9 @@ camera_fps = {}
 
 camera_status = {}
 
-# -----------------------------------
-# CAMERA DETECTION
-# -----------------------------------
+incident_logs = []
 
-def detect_camera(ip):
-
-    try:
-
-        response = requests.get(
-            f"http://{ip}:8080",
-            timeout=0.3
-        )
-
-        if response.status_code == 200:
-
-            url = f"http://{ip}:8080/video"
-
-            camera_urls.append(url)
-
-            print(f"Camera Found: {url}")
-
-    except Exception:
-
-        pass
-
-# -----------------------------------
-# PARALLEL NETWORK SCAN
-# -----------------------------------
-
-with ThreadPoolExecutor(max_workers=100) as executor:
-
-    for i in range(START_IP, END_IP + 1):
-
-        ip = f"{BASE_IP}{i}"
-
-        executor.submit(
-            detect_camera,
-            ip
-        )
-
-print(f"Total Cameras Found: {len(camera_urls)}")
-
-# -----------------------------------
-# OPEN ACTIVE CAMERAS ONLY
-# -----------------------------------
-
-for url in camera_urls:
-
-    print(f"Connecting: {url}")
-
-    cap = cv2.VideoCapture(url)
-
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-    if cap.isOpened():
-
-        print(f"Connected: {url}")
-
-        caps.append(cap)
-
-    else:
-
-        print(f"Failed: {url}")
+last_saved_time = {}
 
 # -----------------------------------
 # CAMERA READER THREAD
@@ -119,10 +68,14 @@ def camera_reader(camera_id, cap):
     global camera_alerts
     global camera_fps
     global camera_status
+    global incident_logs
+    global last_saved_time
 
     frame_count = 0
 
     start_time = time.time()
+
+    prev_gray = None
 
     while True:
 
@@ -147,6 +100,41 @@ def camera_reader(camera_id, cap):
         # -----------------------------------
 
         frame = cv2.resize(frame, (320, 240))
+
+        # -----------------------------------
+        # MOTION DETECTION
+        # -----------------------------------
+
+        gray = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2GRAY
+        )
+
+        motion_detected = False
+
+        if prev_gray is not None:
+
+            diff = cv2.absdiff(
+                prev_gray,
+                gray
+            )
+
+            _, thresh = cv2.threshold(
+                diff,
+                25,
+                255,
+                cv2.THRESH_BINARY
+            )
+
+            motion_score = cv2.countNonZero(
+                thresh
+            )
+
+            if motion_score > 5000:
+
+                motion_detected = True
+
+        prev_gray = gray
 
         frame_count += 1
 
@@ -186,6 +174,14 @@ def camera_reader(camera_id, cap):
                 alert = "PERSON DETECTED"
 
         # -----------------------------------
+        # MOTION ALERT
+        # -----------------------------------
+
+        if motion_detected and alert == "SAFE":
+
+            alert = "SUSPICIOUS MOVEMENT"
+
+        # -----------------------------------
         # FPS CALCULATION
         # -----------------------------------
 
@@ -198,14 +194,26 @@ def camera_reader(camera_id, cap):
             camera_fps[camera_id] = int(fps)
 
         # -----------------------------------
-        # STATUS OVERLAY
+        # STATUS COLORS
         # -----------------------------------
 
         color = (0, 255, 0)
 
-        if alert != "SAFE":
+        if alert == "PERSON DETECTED":
 
             color = (0, 0, 255)
+
+        elif alert == "SUSPICIOUS MOVEMENT":
+
+            color = (0, 255, 255)
+
+        elif alert == "CAMERA OFFLINE":
+
+            color = (128, 128, 128)
+
+        # -----------------------------------
+        # FRAME OVERLAYS
+        # -----------------------------------
 
         cv2.putText(
             frame,
@@ -237,27 +245,172 @@ def camera_reader(camera_id, cap):
             2
         )
 
+        cv2.putText(
+            frame,
+            time.strftime("%H:%M:%S"),
+            (10, 100),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 255, 255),
+            2
+        )
+
         # -----------------------------------
-        # SAVE DATA
+        # SAVE ALERT DATA
         # -----------------------------------
 
         camera_alerts[camera_id] = alert
 
         latest_frames[camera_id] = frame
 
+        # -----------------------------------
+        # SAVE SNAPSHOTS
+        # -----------------------------------
+
+        current_time = time.time()
+
+        if alert != "SAFE":
+
+            last_time = last_saved_time.get(
+                camera_id,
+                0
+            )
+
+            # SAVE EVERY 10 SECONDS MAX
+            if current_time - last_time > 10:
+
+                timestamp = time.strftime(
+                    "%Y%m%d_%H%M%S"
+                )
+
+                filename = (
+                    f"alerts/camera_"
+                    f"{camera_id + 1}_"
+                    f"{alert.replace(' ', '_')}_"
+                    f"{timestamp}.jpg"
+                )
+
+                cv2.imwrite(
+                    filename,
+                    frame
+                )
+
+                print(
+                    f"Snapshot Saved: {filename}"
+                )
+
+                incident_logs.insert(0, {
+
+                    "camera": camera_id + 1,
+
+                    "alert": alert,
+
+                    "time": timestamp,
+
+                    "image": filename
+
+                })
+
+                last_saved_time[camera_id] = current_time
+
         time.sleep(0.03)
 
 # -----------------------------------
-# START CAMERA THREADS
+# CONNECT NEW CAMERA
 # -----------------------------------
 
-for i, cap in enumerate(caps):
+def connect_camera(url):
 
-    threading.Thread(
-        target=camera_reader,
-        args=(i, cap),
-        daemon=True
-    ).start()
+    cap = cv2.VideoCapture(url)
+
+    cap.set(
+        cv2.CAP_PROP_BUFFERSIZE,
+        1
+    )
+
+    if cap.isOpened():
+
+        print(f"Connected: {url}")
+
+        camera_id = len(caps)
+
+        caps.append(cap)
+
+        threading.Thread(
+            target=camera_reader,
+            args=(camera_id, cap),
+            daemon=True
+        ).start()
+
+    else:
+
+        print(f"Failed: {url}")
+
+# -----------------------------------
+# CAMERA DETECTION
+# -----------------------------------
+
+def detect_camera(ip):
+
+    try:
+
+        response = requests.get(
+            f"http://{ip}:8080",
+            timeout=0.3
+        )
+
+        if response.status_code == 200:
+
+            url = f"http://{ip}:8080/video"
+
+            if url not in camera_urls:
+
+                camera_urls.append(url)
+
+                print(f"Camera Found: {url}")
+
+                connect_camera(url)
+
+    except Exception:
+
+        pass
+
+# -----------------------------------
+# BACKGROUND CAMERA SCANNER
+# -----------------------------------
+
+def background_scanner():
+
+    while True:
+
+        print("Scanning For New Cameras...")
+
+        with ThreadPoolExecutor(
+            max_workers=50
+        ) as executor:
+
+            for i in range(
+                START_IP,
+                END_IP + 1
+            ):
+
+                ip = f"{BASE_IP}{i}"
+
+                executor.submit(
+                    detect_camera,
+                    ip
+                )
+
+        time.sleep(30)
+
+# -----------------------------------
+# START BACKGROUND SCANNER
+# -----------------------------------
+
+threading.Thread(
+    target=background_scanner,
+    daemon=True
+).start()
 
 # -----------------------------------
 # VIDEO GENERATOR
@@ -314,7 +467,8 @@ def index():
         cameras=cameras,
         alerts=camera_alerts,
         total_alerts=total_alerts,
-        statuses=camera_status
+        statuses=camera_status,
+        incidents=incident_logs
     )
 
 # -----------------------------------

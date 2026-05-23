@@ -6,31 +6,41 @@
 
 body {
 
-    background: #020617;
+    background:
+        linear-gradient(to bottom,
+            #020617,
+            #041127);
 
     font-family: Arial, sans-serif;
 
     color: white;
 
     padding: 20px;
+
+    min-height: 100vh;
 }
 
+/* -------------------------------- */
 /* HEADER */
+/* -------------------------------- */
 
 .header {
 
     text-align: center;
 
-    margin-bottom: 30px;
+    margin-bottom: 35px;
 }
 
 .header h1 {
 
     color: #38bdf8;
 
-    font-size: 42px;
+    font-size: 46px;
 
     margin-bottom: 10px;
+
+    text-shadow:
+        0 0 20px rgba(56, 189, 248, 0.5);
 }
 
 .header p {
@@ -38,38 +48,54 @@ body {
     color: #cbd5e1;
 
     font-size: 18px;
+
+    letter-spacing: 1px;
 }
 
+/* -------------------------------- */
 /* TOP STATUS CARDS */
+/* -------------------------------- */
 
 .top-cards {
 
     display: grid;
 
     grid-template-columns:
-        repeat(auto-fit, minmax(220px, 1fr));
+        repeat(auto-fit, minmax(250px, 1fr));
 
-    gap: 20px;
+    gap: 22px;
 
-    margin-bottom: 30px;
+    margin-bottom: 35px;
 }
 
 .card {
 
-    background: rgba(30, 41, 59, 0.9);
+    background:
+        rgba(15, 23, 42, 0.92);
 
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border:
+        1px solid rgba(255, 255, 255, 0.08);
 
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
 
-    padding: 25px;
+    padding: 28px;
 
-    border-radius: 20px;
+    border-radius: 24px;
 
     text-align: center;
 
     box-shadow:
         0 0 20px rgba(0, 0, 0, 0.4);
+
+    transition: 0.3s;
+}
+
+.card:hover {
+
+    transform: translateY(-5px);
+
+    box-shadow:
+        0 0 25px rgba(56, 189, 248, 0.2);
 }
 
 .card h3 {
@@ -78,55 +104,63 @@ body {
 
     margin-bottom: 15px;
 
-    font-size: 18px;
+    font-size: 19px;
 }
 
 .card p {
 
-    font-size: 34px;
+    font-size: 38px;
 
     font-weight: bold;
 }
 
+/* -------------------------------- */
 /* CAMERA GRID */
+/* -------------------------------- */
 
 .dashboard {
 
     display: grid;
 
     grid-template-columns:
-        repeat(auto-fit, minmax(420px, 1fr));
+        repeat(auto-fit, minmax(390px, 1fr));
 
-    gap: 25px;
+    gap: 28px;
 }
 
+/* -------------------------------- */
 /* CAMERA CARD */
+/* -------------------------------- */
 
 .camera-card {
 
-    background: #0f172a;
+    background:
+        rgba(15, 23, 42, 0.95);
 
     border-radius: 24px;
 
     overflow: hidden;
 
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border:
+        1px solid rgba(255, 255, 255, 0.08);
 
     box-shadow:
-        0 0 20px rgba(0, 0, 0, 0.45);
+        0 0 25px rgba(0, 0, 0, 0.45);
 
-    transition: 0.3s;
+    transition: 0.35s;
 }
 
 .camera-card:hover {
 
-    transform: translateY(-5px);
+    transform: translateY(-6px);
 
     box-shadow:
-        0 0 25px rgba(56, 189, 248, 0.2);
+        0 0 28px rgba(56, 189, 248, 0.25);
 }
 
+/* -------------------------------- */
 /* CAMERA HEADER */
+/* -------------------------------- */
 
 .camera-header {
 
@@ -151,7 +185,9 @@ body {
     font-size: 22px;
 }
 
+/* -------------------------------- */
 /* LIVE STATUS */
+/* -------------------------------- */
 
 .status {
 
@@ -170,16 +206,22 @@ body {
     color: white;
 
     animation: pulse 2s infinite;
+
+    box-shadow:
+        0 0 12px rgba(34, 197, 94, 0.6);
 }
 
 @keyframes pulse {
 
     50% {
+
         opacity: 0.6;
     }
 }
 
+/* -------------------------------- */
 /* VIDEO FEED */
+/* -------------------------------- */
 
 .camera-feed {
 
@@ -190,24 +232,33 @@ body {
     object-fit: cover;
 
     background: black;
+
+    border-bottom:
+        1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* -------------------------------- */
 /* ALERT SECTION */
+/* -------------------------------- */
 
 .alert-box {
 
     text-align: center;
 
-    padding: 15px;
+    padding: 16px;
 
     font-weight: bold;
 
-    font-size: 16px;
+    font-size: 15px;
 
     letter-spacing: 1px;
+
+    transition: 0.3s;
 }
 
-/* SAFE ALERT */
+/* -------------------------------- */
+/* SAFE */
+/* -------------------------------- */
 
 .alert-safe {
 
@@ -216,7 +267,9 @@ body {
     color: white;
 }
 
-/* DANGER ALERT */
+/* -------------------------------- */
+/* PERSON DETECTED */
+/* -------------------------------- */
 
 .alert-danger {
 
@@ -224,20 +277,90 @@ body {
 
     color: white;
 
-    animation: blink 1s infinite;
+    animation: dangerBlink 1s infinite;
 
     box-shadow:
-        0 0 20px rgba(239, 68, 68, 0.6);
+        0 0 20px rgba(239, 68, 68, 0.7);
 }
 
-@keyframes blink {
+@keyframes dangerBlink {
+
+    0% {
+
+        opacity: 1;
+    }
 
     50% {
-        opacity: 0.5;
+
+        opacity: 0.45;
+    }
+
+    100% {
+
+        opacity: 1;
     }
 }
 
+/* -------------------------------- */
+/* SUSPICIOUS MOVEMENT */
+/* -------------------------------- */
+
+.alert-warning {
+
+    background: #eab308;
+
+    color: black;
+
+    animation: warningBlink 1.2s infinite;
+
+    box-shadow:
+        0 0 20px rgba(234, 179, 8, 0.7);
+}
+
+@keyframes warningBlink {
+
+    0% {
+
+        opacity: 1;
+    }
+
+    50% {
+
+        opacity: 0.6;
+    }
+
+    100% {
+
+        opacity: 1;
+    }
+}
+
+/* -------------------------------- */
+/* CAMERA OFFLINE */
+/* -------------------------------- */
+
+.alert-offline {
+
+    background: #6b7280;
+
+    color: white;
+
+    box-shadow:
+        0 0 12px rgba(107, 114, 128, 0.5);
+}
+
+/* -------------------------------- */
 /* RESPONSIVE */
+/* -------------------------------- */
+
+@media(max-width:1100px) {
+
+    .dashboard {
+
+        grid-template-columns:
+            repeat(auto-fit, minmax(320px, 1fr));
+    }
+}
 
 @media(max-width:900px) {
 
@@ -264,8 +387,18 @@ body {
         font-size: 30px;
     }
 
+    .header p {
+
+        font-size: 14px;
+    }
+
     .camera-feed {
 
         height: 240px;
+    }
+
+    .card p {
+
+        font-size: 28px;
     }
 }
