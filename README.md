@@ -1,0 +1,68 @@
+# SakhiSafe – Docker & WSL IP Camera Surveillance System
+
+AI-powered women safety monitoring system using Docker containers, WSL2 networking, IP camera streaming, OpenCV, and YOLO-based real-time surveillance analytics.
+
+---
+
+# Problem Statement
+
+Design and implement a solution that allows a Docker container to successfully connect to an IP camera located on a different network (WSL IP).
+
+The project solves the networking isolation problem between:
+
+- Docker Containers
+- WSL2 Networking
+- Windows Host
+- IP Camera Streams
+
+and enables secure real-time video analytics for women safety monitoring applications.
+
+---
+
+# Features
+
+## Docker ↔ WSL Network Bridging
+- Dynamic WSL IP detection
+- Port forwarding automation
+- Docker bridge networking
+- Secure communication setup
+
+## Real-Time Camera Streaming
+- RTSP stream support
+- HTTP camera stream support
+- Live surveillance feed
+- Stream validation
+
+## AI/ML Integration
+- YOLOv8 object detection
+- OpenCV video processing
+- Human detection support
+- Motion analysis readiness
+
+## Automation
+- Automated PowerShell setup
+- Firewall configuration
+- Docker deployment automation
+- Reusable networking scripts
+
+## Scalability
+- Multi-camera support
+- Multiple container deployment
+- Dynamic routing architecture
+
+---
+
+# System Architecture
+
+```text
+IP Camera
+    ↓
+WSL2 Ubuntu (Gateway)
+    ↓
+Windows Port Forwarding
+    ↓
+Docker Container
+    ↓
+OpenCV + YOLO Processing
+    ↓
+Monitoring Dashboard
