@@ -18,7 +18,7 @@
         <h1>🛡 SakhiSafe Women Safety Dashboard</h1>
 
         <p>
-            AI Powered Multi Camera Surveillance System
+            AI Powered AI Surveillance & Threat Detection System
         </p>
 
     </div>
@@ -85,13 +85,17 @@
                 <div class="
                     status
 
-                    {% if alerts.get(loop.index0) == 'PERSON DETECTED' %}
+                    {% if alerts.get(loop.index0) == 'WEAPON DETECTED' %}
 
                         status-danger
 
-                    {% elif alerts.get(loop.index0) == 'SUSPICIOUS MOVEMENT' %}
+                    {% elif alerts.get(loop.index0) == 'PERSON DETECTED' %}
 
                         status-warning
+
+                    {% elif alerts.get(loop.index0) == 'FACE COVERED' %}
+
+                        status-face
 
                     {% elif alerts.get(loop.index0) == 'CAMERA OFFLINE' %}
 
@@ -104,11 +108,15 @@
                     {% endif %}
                 ">
 
-                    {% if alerts.get(loop.index0) == "PERSON DETECTED" %}
+                    {% if alerts.get(loop.index0) == "WEAPON DETECTED" %}
+
+                    CRITICAL
+
+                    {% elif alerts.get(loop.index0) == "PERSON DETECTED" %}
 
                     ALERT
 
-                    {% elif alerts.get(loop.index0) == "SUSPICIOUS MOVEMENT" %}
+                    {% elif alerts.get(loop.index0) == "FACE COVERED" %}
 
                     WARNING
 
@@ -135,13 +143,17 @@
             <div class="
                 alert-box
 
-                {% if alerts.get(loop.index0) == 'PERSON DETECTED' %}
+                {% if alerts.get(loop.index0) == 'WEAPON DETECTED' %}
 
                     alert-danger
 
-                {% elif alerts.get(loop.index0) == 'SUSPICIOUS MOVEMENT' %}
+                {% elif alerts.get(loop.index0) == 'PERSON DETECTED' %}
 
                     alert-warning
+
+                {% elif alerts.get(loop.index0) == 'FACE COVERED' %}
+
+                    alert-face
 
                 {% elif alerts.get(loop.index0) == 'CAMERA OFFLINE' %}
 
@@ -154,17 +166,23 @@
                 {% endif %}
             ">
 
-                {% if alerts.get(loop.index0) == "PERSON DETECTED" %}
+                {% if alerts.get(loop.index0) == "WEAPON DETECTED" %}
+
+                🔴 WEAPON DETECTED
+                <br>
+                CRITICAL THREAT ALERT
+
+                {% elif alerts.get(loop.index0) == "PERSON DETECTED" %}
 
                 🚨 PERSON DETECTED
                 <br>
-                UNSAFE MONITORING
+                ACTIVE MONITORING
 
-                {% elif alerts.get(loop.index0) == "SUSPICIOUS MOVEMENT" %}
+                {% elif alerts.get(loop.index0) == "FACE COVERED" %}
 
-                ⚠️ SUSPICIOUS ACTIVITY DETECTED
+                🟣 FACE COVERED DETECTED
                 <br>
-                UNSAFE MONITORING
+                SUSPICIOUS IDENTITY
 
                 {% elif alerts.get(loop.index0) == "CAMERA OFFLINE" %}
 

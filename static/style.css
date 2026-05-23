@@ -450,3 +450,95 @@ body {
     box-shadow:
         0 0 15px rgba(107, 114, 128, 0.7);
 }
+
+/* -------------------------------- */
+/* FACE COVERED ALERT */
+/* -------------------------------- */
+
+.alert-face {
+
+    background: #a855f7;
+
+    color: white;
+
+    animation: faceBlink 1s infinite;
+
+    box-shadow:
+        0 0 20px rgba(168, 85, 247, 0.8);
+}
+
+.status-face {
+
+    background: #a855f7;
+
+    color: white;
+
+    animation: faceBlink 1s infinite;
+
+    box-shadow:
+        0 0 18px rgba(168, 85, 247, 0.8);
+}
+
+@keyframes faceBlink {
+
+    0% {
+
+        opacity: 1;
+    }
+
+    50% {
+
+        opacity: 0.5;
+    }
+
+    100% {
+
+        opacity: 1;
+    }
+}
+
+/* -------------------------------- */
+/* WEAPON DETECTED */
+/* -------------------------------- */
+
+.alert-danger {
+
+    background: #b91c1c;
+
+    color: white;
+
+    animation: criticalBlink 0.7s infinite;
+
+    box-shadow:
+        0 0 30px rgba(255, 0, 0, 1);
+}
+
+.status-danger {
+
+    background: #b91c1c;
+
+    color: white;
+
+    animation: criticalBlink 0.7s infinite;
+
+    box-shadow:
+        0 0 25px rgba(255, 0, 0, 1);
+}
+
+@keyframes criticalBlink {
+
+    0% {
+
+        opacity: 1;
+    }
+
+    50% {
+
+        opacity: 0.25;
+    }
+
+    100% {
+
+        opacity: 1;
+    }
+}

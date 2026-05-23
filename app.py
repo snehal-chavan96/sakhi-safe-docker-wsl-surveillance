@@ -4,8 +4,19 @@ import threading
 import time
 import requests
 import os
+import numpy as np
 
 from concurrent.futures import ThreadPoolExecutor
+
+# -----------------------------------
+# YOLOv8
+# -----------------------------------
+
+from ultralytics import YOLO
+
+# -----------------------------------
+# FLASK APP
+# -----------------------------------
 
 app = Flask(__name__)
 
@@ -18,7 +29,7 @@ if not os.path.exists("alerts"):
     os.makedirs("alerts")
 
 # -----------------------------------
-# AI HUMAN DETECTOR
+# AI HUMAN DETECTOR (BACKUP)
 # -----------------------------------
 
 hog = cv2.HOGDescriptor()
@@ -28,7 +39,23 @@ hog.setSVMDetector(
 )
 
 # -----------------------------------
-# CAMERA RANGE CONFIGURATION
+# YOLO MODEL
+# -----------------------------------
+
+model = YOLO("yolov8n.pt")
+
+# -----------------------------------
+# WEAPON CLASSES
+# -----------------------------------
+
+WEAPON_CLASSES = [
+    "knife",
+    "scissors",
+    "baseball bat"
+]
+
+# -----------------------------------
+# CAMERA RANGE
 # -----------------------------------
 
 BASE_IP = "50.0.1."
@@ -59,264 +86,7 @@ incident_logs = []
 last_saved_time = {}
 
 # -----------------------------------
-# CAMERA READER THREAD
-# -----------------------------------
-
-def camera_reader(camera_id, cap):
-
-    global latest_frames
-    global camera_alerts
-    global camera_fps
-    global camera_status
-    global incident_logs
-    global last_saved_time
-
-    frame_count = 0
-
-    start_time = time.time()
-
-    prev_gray = None
-
-    while True:
-
-        success, frame = cap.read()
-
-        if not success:
-
-            print(f"Camera {camera_id + 1} Offline")
-
-            camera_alerts[camera_id] = "CAMERA OFFLINE"
-
-            camera_status[camera_id] = "OFFLINE"
-
-            time.sleep(1)
-
-            continue
-
-        camera_status[camera_id] = "ONLINE"
-
-        # -----------------------------------
-        # PERFORMANCE RESIZE
-        # -----------------------------------
-
-        frame = cv2.resize(frame, (320, 240))
-
-        # -----------------------------------
-        # MOTION DETECTION
-        # -----------------------------------
-
-        gray = cv2.cvtColor(
-            frame,
-            cv2.COLOR_BGR2GRAY
-        )
-
-        motion_detected = False
-
-        if prev_gray is not None:
-
-            diff = cv2.absdiff(
-                prev_gray,
-                gray
-            )
-
-            _, thresh = cv2.threshold(
-                diff,
-                25,
-                255,
-                cv2.THRESH_BINARY
-            )
-
-            motion_score = cv2.countNonZero(
-                thresh
-            )
-
-            if motion_score > 5000:
-
-                motion_detected = True
-
-        prev_gray = gray
-
-        frame_count += 1
-
-        alert = "SAFE"
-
-        # -----------------------------------
-        # RUN AI EVERY 10 FRAMES
-        # -----------------------------------
-
-        if frame_count % 10 == 0:
-
-            boxes, weights = hog.detectMultiScale(
-                frame,
-                winStride=(8, 8)
-            )
-
-            for (x, y, w, h) in boxes:
-
-                cv2.rectangle(
-                    frame,
-                    (x, y),
-                    (x + w, y + h),
-                    (0, 0, 255),
-                    2
-                )
-
-                cv2.putText(
-                    frame,
-                    "PERSON DETECTED",
-                    (x, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 0, 255),
-                    2
-                )
-
-                alert = "PERSON DETECTED"
-
-        # -----------------------------------
-        # MOTION ALERT
-        # -----------------------------------
-
-        if motion_detected and alert == "SAFE":
-
-            alert = "SUSPICIOUS MOVEMENT"
-
-        # -----------------------------------
-        # FPS CALCULATION
-        # -----------------------------------
-
-        elapsed = time.time() - start_time
-
-        if elapsed > 0:
-
-            fps = frame_count / elapsed
-
-            camera_fps[camera_id] = int(fps)
-
-        # -----------------------------------
-        # STATUS COLORS
-        # -----------------------------------
-
-        color = (0, 255, 0)
-
-        if alert == "PERSON DETECTED":
-
-            color = (0, 0, 255)
-
-        elif alert == "SUSPICIOUS MOVEMENT":
-
-            color = (0, 255, 255)
-
-        elif alert == "CAMERA OFFLINE":
-
-            color = (128, 128, 128)
-
-        # -----------------------------------
-        # FRAME OVERLAYS
-        # -----------------------------------
-
-        cv2.putText(
-            frame,
-            f"STATUS: {alert}",
-            (10, 25),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            color,
-            2
-        )
-
-        cv2.putText(
-            frame,
-            f"FPS: {camera_fps.get(camera_id, 0)}",
-            (10, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (255, 255, 0),
-            2
-        )
-
-        cv2.putText(
-            frame,
-            f"CAMERA {camera_id + 1}",
-            (10, 75),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (255, 255, 255),
-            2
-        )
-
-        cv2.putText(
-            frame,
-            time.strftime("%H:%M:%S"),
-            (10, 100),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (255, 255, 255),
-            2
-        )
-
-        # -----------------------------------
-        # SAVE ALERT DATA
-        # -----------------------------------
-
-        camera_alerts[camera_id] = alert
-
-        latest_frames[camera_id] = frame
-
-        # -----------------------------------
-        # SAVE SNAPSHOTS
-        # -----------------------------------
-
-        current_time = time.time()
-
-        if alert != "SAFE":
-
-            last_time = last_saved_time.get(
-                camera_id,
-                0
-            )
-
-            # SAVE EVERY 10 SECONDS MAX
-            if current_time - last_time > 10:
-
-                timestamp = time.strftime(
-                    "%Y%m%d_%H%M%S"
-                )
-
-                filename = (
-                    f"alerts/camera_"
-                    f"{camera_id + 1}_"
-                    f"{alert.replace(' ', '_')}_"
-                    f"{timestamp}.jpg"
-                )
-
-                cv2.imwrite(
-                    filename,
-                    frame
-                )
-
-                print(
-                    f"Snapshot Saved: {filename}"
-                )
-
-                incident_logs.insert(0, {
-
-                    "camera": camera_id + 1,
-
-                    "alert": alert,
-
-                    "time": timestamp,
-
-                    "image": filename
-
-                })
-
-                last_saved_time[camera_id] = current_time
-
-        time.sleep(0.03)
-
-# -----------------------------------
-# CONNECT NEW CAMERA
+# CONNECT CAMERA
 # -----------------------------------
 
 def connect_camera(url):
@@ -404,13 +174,369 @@ def background_scanner():
         time.sleep(30)
 
 # -----------------------------------
-# START BACKGROUND SCANNER
+# START SCANNER THREAD
 # -----------------------------------
 
 threading.Thread(
     target=background_scanner,
     daemon=True
 ).start()
+
+# -----------------------------------
+# SAVE ALERT
+# -----------------------------------
+
+def save_alert(camera_id, alert, frame):
+
+    current_time = time.time()
+
+    last_time = last_saved_time.get(
+        camera_id,
+        0
+    )
+
+    # SAVE EVERY 10 SECONDS
+    if current_time - last_time < 10:
+
+        return
+
+    timestamp = time.strftime(
+        "%Y%m%d_%H%M%S"
+    )
+
+    filename = (
+        f"alerts/camera_"
+        f"{camera_id + 1}_"
+        f"{alert.replace(' ', '_')}_"
+        f"{timestamp}.jpg"
+    )
+
+    cv2.imwrite(
+        filename,
+        frame
+    )
+
+    print(f"Snapshot Saved: {filename}")
+
+    incident_logs.insert(0, {
+
+        "camera": camera_id + 1,
+
+        "alert": alert,
+
+        "time": timestamp,
+
+        "image": filename
+
+    })
+
+    last_saved_time[camera_id] = current_time
+
+# -----------------------------------
+# CAMERA READER
+# -----------------------------------
+
+def camera_reader(camera_id, cap):
+
+    global latest_frames
+    global camera_alerts
+    global camera_fps
+    global camera_status
+
+    frame_count = 0
+
+    start_time = time.time()
+
+    while True:
+
+        success, frame = cap.read()
+
+        # -----------------------------------
+        # OFFLINE CAMERA
+        # -----------------------------------
+
+        if not success:
+
+            print(f"Camera {camera_id + 1} Offline")
+
+            camera_alerts[camera_id] = "CAMERA OFFLINE"
+
+            camera_status[camera_id] = "OFFLINE"
+
+            offline_frame = np.zeros(
+                (240, 320, 3),
+                dtype=np.uint8
+            )
+
+            cv2.putText(
+                offline_frame,
+                "CAMERA OFFLINE",
+                (40, 120),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0, 0, 255),
+                2
+            )
+
+            latest_frames[camera_id] = offline_frame
+
+            time.sleep(1)
+
+            continue
+
+        # -----------------------------------
+        # CAMERA ONLINE
+        # -----------------------------------
+
+        camera_status[camera_id] = "ONLINE"
+
+        frame = cv2.resize(
+            frame,
+            (640, 480)
+        )
+
+        frame_count += 1
+
+        alert = "SAFE"
+
+        # -----------------------------------
+        # YOLO AI DETECTION
+        # -----------------------------------
+
+        if frame_count % 10 == 0:
+
+            results = model(
+                frame,
+                verbose=False
+            )
+
+            for result in results:
+
+                boxes = result.boxes
+
+                for box in boxes:
+
+                    cls_id = int(box.cls[0])
+
+                    class_name = (
+                        model.names[cls_id]
+                    )
+
+                    x1, y1, x2, y2 = map(
+                        int,
+                        box.xyxy[0]
+                    )
+
+                    confidence = float(
+                        box.conf[0]
+                    )
+
+                    # -----------------------------------
+                    # PERSON DETECTION
+                    # -----------------------------------
+
+                    if class_name == "person":
+
+                        alert = "PERSON DETECTED"
+
+                        color = (0, 255, 255)
+
+                        cv2.rectangle(
+                            frame,
+                            (x1, y1),
+                            (x2, y2),
+                            color,
+                            2
+                        )
+
+                        cv2.putText(
+                            frame,
+                            "PERSON DETECTED",
+                            (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6,
+                            color,
+                            2
+                        )
+
+                    # -----------------------------------
+                    # WEAPON DETECTION
+                    # -----------------------------------
+
+                    if class_name in WEAPON_CLASSES:
+
+                        alert = "WEAPON DETECTED"
+
+                        color = (0, 0, 255)
+
+                        cv2.rectangle(
+                            frame,
+                            (x1, y1),
+                            (x2, y2),
+                            color,
+                            3
+                        )
+
+                        cv2.putText(
+                            frame,
+                            f"{class_name.upper()} DETECTED",
+                            (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            color,
+                            2
+                        )
+
+                        # SAVE ALERT
+                        save_alert(
+                            camera_id,
+                            alert,
+                            frame
+                        )
+
+        # -----------------------------------
+        # FACE COVERED DETECTION
+        # -----------------------------------
+
+        gray = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2GRAY
+        )
+
+        face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades +
+            'haarcascade_frontalface_default.xml'
+        )
+
+        faces = face_cascade.detectMultiScale(
+            gray,
+            1.1,
+            4
+        )
+
+        if len(faces) == 0:
+
+            if alert == "SAFE":
+
+                alert = "FACE COVERED"
+
+                cv2.putText(
+                    frame,
+                    "FACE NOT VISIBLE",
+                    (20, 440),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (255, 0, 255),
+                    2
+                )
+
+        # -----------------------------------
+        # FPS
+        # -----------------------------------
+
+        elapsed = time.time() - start_time
+
+        if elapsed > 0:
+
+            fps = frame_count / elapsed
+
+            camera_fps[camera_id] = int(fps)
+
+        # -----------------------------------
+        # STATUS COLORS
+        # -----------------------------------
+
+        color = (0, 255, 0)
+
+        if alert == "PERSON DETECTED":
+
+            color = (0, 255, 255)
+
+        elif alert == "WEAPON DETECTED":
+
+            color = (0, 0, 255)
+
+        elif alert == "FACE COVERED":
+
+            color = (255, 0, 255)
+
+        elif alert == "CAMERA OFFLINE":
+
+            color = (128, 128, 128)
+
+        # -----------------------------------
+        # OVERLAYS
+        # -----------------------------------
+
+        cv2.putText(
+            frame,
+            f"STATUS: {alert}",
+            (20, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            color,
+            2
+        )
+
+        cv2.putText(
+            frame,
+            f"FPS: {camera_fps.get(camera_id, 0)}",
+            (20, 65),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 0),
+            2
+        )
+
+        cv2.putText(
+            frame,
+            f"CAMERA {camera_id + 1}",
+            (20, 100),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 255),
+            2
+        )
+
+        cv2.putText(
+            frame,
+            time.strftime("%H:%M:%S"),
+            (20, 135),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 255),
+            2
+        )
+
+        # -----------------------------------
+        # SAVE PERSON DETECTION
+        # -----------------------------------
+
+        if alert == "PERSON DETECTED":
+
+            save_alert(
+                camera_id,
+                alert,
+                frame
+            )
+
+        if alert == "FACE COVERED":
+
+            save_alert(
+                camera_id,
+                alert,
+                frame
+            )
+
+        # -----------------------------------
+        # SAVE DATA
+        # -----------------------------------
+
+        camera_alerts[camera_id] = alert
+
+        latest_frames[camera_id] = frame
+
+        time.sleep(0.03)
 
 # -----------------------------------
 # VIDEO GENERATOR
@@ -472,7 +598,7 @@ def index():
     )
 
 # -----------------------------------
-# VIDEO STREAM ROUTE
+# VIDEO ROUTE
 # -----------------------------------
 
 @app.route('/video/<int:camera_id>')
