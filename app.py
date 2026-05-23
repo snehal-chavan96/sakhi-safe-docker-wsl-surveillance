@@ -1,37 +1,38 @@
 from flask import Flask, render_template, Response
 import cv2
-import requests
 import threading
 import time
-import socket
-
-from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 
-# -----------------------------
+# -----------------------------------
 # AI HUMAN DETECTOR
-# -----------------------------
+# -----------------------------------
 
 hog = cv2.HOGDescriptor()
+
 hog.setSVMDetector(
     cv2.HOGDescriptor_getDefaultPeopleDetector()
 )
 
-# -----------------------------
-# AUTO WIFI SUBNET DETECTION
-# -----------------------------
+# -----------------------------------
+# YOUR CAMERA URLS
+# -----------------------------------
 
+camera_urls = [
 
-base_ip = "172.29.0."
+    "http://172.29.0.199:8080/video",
+    "http://172.29.0.59:8080/video",
+    "http://172.29.0.173:8080/video",
+    "http://172.29.0.207:8080/video"
 
-print(f"Scanning Network: {base_ip}0/24")
+]
 
-# -----------------------------
+print(f"Total Cameras Configured: {len(camera_urls)}")
+
+# -----------------------------------
 # GLOBAL STORAGE
-# -----------------------------
-
-camera_urls = []
+# -----------------------------------
 
 caps = []
 
@@ -39,51 +40,13 @@ latest_frames = {}
 
 camera_alerts = {}
 
-# -----------------------------
-# CAMERA AUTO DETECTION
-# -----------------------------
-
-def check_camera(ip):
-
-    url = f"http://{ip}:8080/video"
-
-    try:
-
-        response = requests.get(
-            f"http://{ip}:8080",
-            timeout=1
-        )
-
-        if response.status_code == 200:
-
-            print(f"Camera Found: {url}")
-
-            camera_urls.append(url)
-
-    except Exception:
-
-        pass
-
-
-# -----------------------------
-# NETWORK SCAN
-# -----------------------------
-
-with ThreadPoolExecutor(max_workers=50) as executor:
-
-    for i in range(1, 255):
-
-        ip = base_ip + str(i)
-
-        executor.submit(check_camera, ip)
-
-print(f"Total Cameras Found: {len(camera_urls)}")
-
-# -----------------------------
+# -----------------------------------
 # OPEN CAMERAS
-# -----------------------------
+# -----------------------------------
 
 for url in camera_urls:
+
+    print(f"Connecting to: {url}")
 
     cap = cv2.VideoCapture(url)
 
@@ -95,9 +58,13 @@ for url in camera_urls:
 
         caps.append(cap)
 
-# -----------------------------
+    else:
+
+        print(f"Failed: {url}")
+
+# -----------------------------------
 # CAMERA READER THREAD
-# -----------------------------
+# -----------------------------------
 
 def camera_reader(camera_id, cap):
 
@@ -110,21 +77,24 @@ def camera_reader(camera_id, cap):
 
         if not success:
 
-            print(f"Camera {camera_id} disconnected")
+            print(f"Camera {camera_id + 1} disconnected")
+
+            camera_alerts[camera_id] = "CAMERA OFFLINE"
 
             time.sleep(1)
 
             continue
 
-        # Resize for faster AI
-        small = cv2.resize(frame, (640, 480))
+        # Resize frame
 
-        # -----------------------------
+        frame = cv2.resize(frame, (640, 480))
+
+        # -----------------------------------
         # HUMAN DETECTION
-        # -----------------------------
+        # -----------------------------------
 
         boxes, weights = hog.detectMultiScale(
-            small,
+            frame,
             winStride=(8, 8)
         )
 
@@ -133,26 +103,58 @@ def camera_reader(camera_id, cap):
         for (x, y, w, h) in boxes:
 
             cv2.rectangle(
-                small,
+                frame,
                 (x, y),
                 (x + w, y + h),
                 (0, 0, 255),
                 3
             )
 
+            cv2.putText(
+                frame,
+                "PERSON DETECTED",
+                (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 0, 255),
+                2
+            )
+
             alert = "PERSON DETECTED"
 
-        # Store alert
+        # -----------------------------------
+        # STATUS TEXT
+        # -----------------------------------
+
+        color = (0, 255, 0)
+
+        if alert != "SAFE":
+
+            color = (0, 0, 255)
+
+        cv2.putText(
+            frame,
+            f"STATUS: {alert}",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            color,
+            3
+        )
+
+        # SAVE ALERT
+
         camera_alerts[camera_id] = alert
 
-        # Store latest frame
-        latest_frames[camera_id] = small
+        # SAVE FRAME
+
+        latest_frames[camera_id] = frame
 
         time.sleep(0.03)
 
-# -----------------------------
-# START THREADS
-# -----------------------------
+# -----------------------------------
+# START CAMERA THREADS
+# -----------------------------------
 
 for i, cap in enumerate(caps):
 
@@ -162,9 +164,9 @@ for i, cap in enumerate(caps):
         daemon=True
     ).start()
 
-# -----------------------------
+# -----------------------------------
 # VIDEO GENERATOR
-# -----------------------------
+# -----------------------------------
 
 def generate_frames(camera_id):
 
@@ -191,9 +193,9 @@ def generate_frames(camera_id):
 
         time.sleep(0.03)
 
-# -----------------------------
+# -----------------------------------
 # DASHBOARD
-# -----------------------------
+# -----------------------------------
 
 @app.route('/')
 def index():
@@ -210,9 +212,9 @@ def index():
         alerts=camera_alerts
     )
 
-# -----------------------------
-# VIDEO ROUTE
-# -----------------------------
+# -----------------------------------
+# VIDEO STREAM ROUTE
+# -----------------------------------
 
 @app.route('/video/<int:camera_id>')
 def video(camera_id):
@@ -222,9 +224,9 @@ def video(camera_id):
         mimetype='multipart/x-mixed-replace; boundary=frame'
     )
 
-# -----------------------------
+# -----------------------------------
 # START SERVER
-# -----------------------------
+# -----------------------------------
 
 if __name__ == "__main__":
 
