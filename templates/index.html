@@ -23,7 +23,7 @@
 
     </div>
 
-    <!-- TOP CARDS -->
+    <!-- TOP STATUS CARDS -->
 
     <div class="top-cards">
 
@@ -48,12 +48,16 @@
             <h3>Live Alerts</h3>
 
             <p>
+
                 {{
+
                 alerts.values()
-                | select("equalto", "PERSON DETECTED")
+                | reject("equalto", "SAFE")
                 | list
                 | length
+
                 }}
+
             </p>
 
         </div>
@@ -76,11 +80,41 @@
                     📷 Camera {{ loop.index }}
                 </h2>
 
-                <div class="status">
+                <!-- STATUS BADGE -->
+
+                <div class="
+                    status
+
+                    {% if alerts.get(loop.index0) == 'PERSON DETECTED' %}
+
+                        status-danger
+
+                    {% elif alerts.get(loop.index0) == 'SUSPICIOUS MOVEMENT' %}
+
+                        status-warning
+
+                    {% elif alerts.get(loop.index0) == 'CAMERA OFFLINE' %}
+
+                        status-offline
+
+                    {% else %}
+
+                        status-live
+
+                    {% endif %}
+                ">
 
                     {% if alerts.get(loop.index0) == "PERSON DETECTED" %}
 
                     ALERT
+
+                    {% elif alerts.get(loop.index0) == "SUSPICIOUS MOVEMENT" %}
+
+                    WARNING
+
+                    {% elif alerts.get(loop.index0) == "CAMERA OFFLINE" %}
+
+                    OFFLINE
 
                     {% else %}
 
@@ -105,6 +139,14 @@
 
                     alert-danger
 
+                {% elif alerts.get(loop.index0) == 'SUSPICIOUS MOVEMENT' %}
+
+                    alert-warning
+
+                {% elif alerts.get(loop.index0) == 'CAMERA OFFLINE' %}
+
+                    alert-offline
+
                 {% else %}
 
                     alert-safe
@@ -115,6 +157,20 @@
                 {% if alerts.get(loop.index0) == "PERSON DETECTED" %}
 
                 🚨 PERSON DETECTED
+                <br>
+                UNSAFE MONITORING
+
+                {% elif alerts.get(loop.index0) == "SUSPICIOUS MOVEMENT" %}
+
+                ⚠️ SUSPICIOUS ACTIVITY DETECTED
+                <br>
+                UNSAFE MONITORING
+
+                {% elif alerts.get(loop.index0) == "CAMERA OFFLINE" %}
+
+                📴 CAMERA OFFLINE
+                <br>
+                MONITORING DISCONNECTED
 
                 {% else %}
 
