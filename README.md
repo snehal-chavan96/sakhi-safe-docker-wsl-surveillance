@@ -66,3 +66,29 @@ and enables secure real-time video analytics for women safety monitoring applica
 🤖 OpenCV + YOLO Processing
       ↓
 📊 Monitoring Dashboard
+```
+# 🚀 Future Enhancements
+
+- 📱 Mobile surveillance dashboard
+- ☁ Cloud-based monitoring
+- 🔔 Emergency alert system
+- 🧠 Behavior anomaly detection
+- 🎤 Voice-triggered emergency response
+- 🌐 Multi-location camera integration
+- 📊 AI analytics dashboard
+
+---
+---
+
+# 📜 Academic Project
+
+Semester 3 Software Engineering Project  
+AI-Powered Women Safety Surveillance System
+
+This project was developed as a hackathon problem statement focused on solving Docker, WSL2, and IP camera networking challenges for real-time AI surveillance systems.
+
+---
+
+# ⭐ Vision
+
+> “Building secure, intelligent, and scalable AI-powered surveillance systems for safer environments.”
