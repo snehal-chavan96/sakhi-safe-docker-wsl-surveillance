@@ -1,13 +1,14 @@
 # 🛡️ SakhiSafe – Docker & WSL IP Camera Surveillance System
 
 AI-powered women safety monitoring system using Docker containers, WSL2 networking, IP camera streaming, OpenCV, and YOLO-based real-time surveillance analytics.
+
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![WSL2](https://img.shields.io/badge/WSL2-Ubuntu-E95420?style=for-the-badge&logo=ubuntu)
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![OpenCV](https://img.shields.io/badge/OpenCV-Computer_Vision-5C3EE8?style=for-the-badge&logo=opencv)
 ![YOLOv8](https://img.shields.io/badge/YOLOv8-Object_Detection-red?style=for-the-badge)
 ![Linux](https://img.shields.io/badge/Linux-Ubuntu-E95420?style=for-the-badge&logo=linux&logoColor=white)
-![PowerShell](https://img.shields.io/badge/PowerShell-Automation-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
+
 ---
 
 # 📌 Problem Statement
